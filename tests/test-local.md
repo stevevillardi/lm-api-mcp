@@ -152,7 +152,7 @@ Then restart Claude Desktop and you should see the LogicMonitor tools available.
 
 3. **Create a test device**:
    - Tool: `lm_create_device`
-   - Required fields: `displayName`, `hostName`, `hostGroupIds`
+   - Required fields: `displayName`, `name`, `hostGroupIds`
 
 ### Basic Group Operations:
 

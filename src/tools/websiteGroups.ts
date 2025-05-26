@@ -1,25 +1,25 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { LogicMonitorClient } from '../api/client.js';
 import {
-  listDeviceGroupsSchema,
-  getDeviceGroupSchema,
-  createDeviceGroupSchema,
-  updateDeviceGroupSchema,
-  deleteDeviceGroupSchema
+  listWebsiteGroupsSchema,
+  getWebsiteGroupSchema,
+  createWebsiteGroupSchema,
+  updateWebsiteGroupSchema,
+  deleteWebsiteGroupSchema
 } from '../utils/validation.js';
 import { batchProcessor } from '../utils/batchProcessor.js';
 import { isBatchInput, normalizeToArray, extractBatchOptions } from '../utils/schemaHelpers.js';
 
-export const deviceGroupTools: Tool[] = [
+export const websiteGroupTools: Tool[] = [
   {
-    name: 'lm_list_device_groups',
-    description: 'List device groups with optional filtering. Automatically paginates through all results if total exceeds requested size.',
+    name: 'lm_list_website_groups',
+    description: 'List website groups with optional filtering. Automatically paginates through all results if total exceeds requested size.',
     inputSchema: {
       type: 'object',
       properties: {
         filter: {
           type: 'string',
-          description: 'LogicMonitor query syntax. Examples: "name:*server*", "parentId:1". Wildcards and special characters will be automatically quoted. Available operators: >: (greater than or equals), <: (less than or equals), > (greater than), < (less than), !: (does not equal), : (equals), ~ (includes), !~ (does not include).'
+          description: 'LogicMonitor query syntax. Examples: "name:*prod*", "parentId:1". Wildcards and special characters will be automatically quoted. Available operators: >: (greater than or equals), <: (less than or equals), > (greater than), < (less than), !: (does not equal), : (equals), ~ (includes), !~ (does not include).'
         },
         size: {
           type: 'number',
@@ -35,38 +35,34 @@ export const deviceGroupTools: Tool[] = [
         fields: {
           type: 'string',
           description: 'Comma-separated list of fields to return (e.g., "id,name,fullPath"). Omit or use "*" for all fields.'
-        },
-        parentId: {
-          type: 'number',
-          description: 'List only children of specific group'
         }
       }
     }
   },
   {
-    name: 'lm_get_device_group',
-    description: 'Get detailed information about a device group',
+    name: 'lm_get_website_group',
+    description: 'Get detailed information about a website group',
     inputSchema: {
       type: 'object',
       properties: {
         groupId: {
           type: 'number',
-          description: 'The ID of the device group to retrieve'
+          description: 'The ID of the website group to retrieve'
         }
       },
       required: ['groupId']
     }
   },
   {
-    name: 'lm_create_device_group',
-    description: 'Create new device group(s). Supports both single and batch operations.',
+    name: 'lm_create_website_group',
+    description: 'Create new website group(s). Supports both single and batch operations.',
     inputSchema: {
       type: 'object',
       properties: {
         // Single mode properties
         name: {
           type: 'string',
-          description: 'Name of the device group'
+          description: 'Name of the website group'
         },
         parentId: {
           type: 'number',
@@ -76,9 +72,13 @@ export const deviceGroupTools: Tool[] = [
           type: 'string',
           description: 'Description of the group'
         },
-        appliesTo: {
-          type: 'string',
-          description: 'Dynamic group query (e.g., "system.displayname =~ \\"prod*\\"")'
+        disableAlerting: {
+          type: 'boolean',
+          description: 'Disable alerting for this group'
+        },
+        stopMonitoring: {
+          type: 'boolean',
+          description: 'Stop monitoring websites in this group'
         },
         properties: {
           type: 'array',
@@ -101,7 +101,8 @@ export const deviceGroupTools: Tool[] = [
               name: { type: 'string' },
               parentId: { type: 'number' },
               description: { type: 'string' },
-              appliesTo: { type: 'string' },
+              disableAlerting: { type: 'boolean' },
+              stopMonitoring: { type: 'boolean' },
               properties: {
                 type: 'array',
                 items: {
@@ -116,7 +117,7 @@ export const deviceGroupTools: Tool[] = [
             },
             required: ['name', 'parentId']
           },
-          description: 'Array of device groups to create (batch mode)'
+          description: 'Array of website groups to create (batch mode)'
         },
         batchOptions: {
           type: 'object',
@@ -137,15 +138,15 @@ export const deviceGroupTools: Tool[] = [
     }
   },
   {
-    name: 'lm_update_device_group',
-    description: 'Update existing device group(s). Supports both single and batch operations.',
+    name: 'lm_update_website_group',
+    description: 'Update existing website group(s). Supports both single and batch operations.',
     inputSchema: {
       type: 'object',
       properties: {
         // Single mode properties
         groupId: {
           type: 'number',
-          description: 'The ID of the device group to update'
+          description: 'The ID of the website group to update'
         },
         name: {
           type: 'string',
@@ -155,11 +156,15 @@ export const deviceGroupTools: Tool[] = [
           type: 'string',
           description: 'New description'
         },
-        appliesTo: {
-          type: 'string',
-          description: 'New dynamic group query'
+        disableAlerting: {
+          type: 'boolean',
+          description: 'Disable alerting'
         },
-        customProperties: {
+        stopMonitoring: {
+          type: 'boolean',
+          description: 'Stop monitoring'
+        },
+        properties: {
           type: 'array',
           items: {
             type: 'object',
@@ -180,8 +185,9 @@ export const deviceGroupTools: Tool[] = [
               groupId: { type: 'number' },
               name: { type: 'string' },
               description: { type: 'string' },
-              appliesTo: { type: 'string' },
-              customProperties: {
+              disableAlerting: { type: 'boolean' },
+              stopMonitoring: { type: 'boolean' },
+              properties: {
                 type: 'array',
                 items: {
                   type: 'object',
@@ -195,7 +201,7 @@ export const deviceGroupTools: Tool[] = [
             },
             required: ['groupId']
           },
-          description: 'Array of device groups to update (batch mode)'
+          description: 'Array of website groups to update (batch mode)'
         },
         batchOptions: {
           type: 'object',
@@ -216,15 +222,15 @@ export const deviceGroupTools: Tool[] = [
     }
   },
   {
-    name: 'lm_delete_device_group',
-    description: 'Delete device group(s). Supports both single and batch operations.',
+    name: 'lm_delete_website_group',
+    description: 'Delete website group(s). Supports both single and batch operations.',
     inputSchema: {
       type: 'object',
       properties: {
         // Single mode properties
         groupId: {
           type: 'number',
-          description: 'The ID of the device group to delete'
+          description: 'The ID of the website group to delete'
         },
         deleteChildren: {
           type: 'boolean',
@@ -241,7 +247,7 @@ export const deviceGroupTools: Tool[] = [
             },
             required: ['groupId']
           },
-          description: 'Array of device groups to delete (batch mode)'
+          description: 'Array of website groups to delete (batch mode)'
         },
         batchOptions: {
           type: 'object',
@@ -263,15 +269,15 @@ export const deviceGroupTools: Tool[] = [
   }
 ];
 
-export async function handleDeviceGroupTool(
+export async function handleWebsiteGroupTool(
   toolName: string,
   args: any,
   client: LogicMonitorClient
 ): Promise<any> {
   switch (toolName) {
-    case 'lm_list_device_groups': {
-      const validated = await listDeviceGroupsSchema.validateAsync(args);
-      const result = await client.listDeviceGroups(validated);
+    case 'lm_list_website_groups': {
+      const validated = await listWebsiteGroupsSchema.validateAsync(args);
+      const result = await client.listWebsiteGroups(validated);
       
       // Check if we have valid data
       if (!result) {
@@ -299,61 +305,62 @@ export async function handleDeviceGroupTool(
           fullPath: group.fullPath,
           parentId: group.parentId,
           description: group.description,
-          appliesTo: group.appliesTo,
           disableAlerting: group.disableAlerting,
-          customProperties: group.customProperties,
-          numOfDevices: group.numOfDevices,
-          numOfDirectDevices: group.numOfDirectDevices,
-          numOfSubGroups: group.numOfSubGroups,
-          alertStatus: group.alertStatus,
-          createdOn: group.createdOn ? new Date(group.createdOn * 1000).toISOString() : undefined,
-          updatedOn: group.updatedOn ? new Date(group.updatedOn * 1000).toISOString() : undefined
+          stopMonitoring: group.stopMonitoring,
+          numOfWebsites: group.numOfWebsites,
+          numOfDirectWebsites: group.numOfDirectWebsites,
+          numOfDirectSubGroups: group.numOfDirectSubGroups,
+          hasWebsitesDisabled: group.hasWebsitesDisabled,
+          properties: group.properties
         }))
       };
     }
 
-    case 'lm_get_device_group': {
-      const validated = await getDeviceGroupSchema.validateAsync(args);
-      const group = await client.getDeviceGroup(validated.groupId);
+    case 'lm_get_website_group': {
+      const validated = await getWebsiteGroupSchema.validateAsync(args);
+      const group = await client.getWebsiteGroup(validated.groupId);
       return {
         id: group.id,
         name: group.name,
         fullPath: group.fullPath,
         parentId: group.parentId,
         description: group.description,
-        appliesTo: group.appliesTo,
         disableAlerting: group.disableAlerting,
-        customProperties: group.customProperties,
-        numOfDevices: group.numOfDevices,
-        numOfDirectDevices: group.numOfDirectDevices,
-        numOfSubGroups: group.numOfSubGroups,
-        alertStatus: group.alertStatus,
-        createdOn: group.createdOn ? new Date(group.createdOn * 1000).toISOString() : undefined,
-        updatedOn: group.updatedOn ? new Date(group.updatedOn * 1000).toISOString() : undefined
+        stopMonitoring: group.stopMonitoring,
+        numOfWebsites: group.numOfWebsites,
+        numOfDirectWebsites: group.numOfDirectWebsites,
+        numOfDirectSubGroups: group.numOfDirectSubGroups,
+        hasWebsitesDisabled: group.hasWebsitesDisabled,
+        testLocation: group.testLocation,
+        properties: group.properties
       };
     }
 
-    case 'lm_create_device_group': {
-      const validated = await createDeviceGroupSchema.validateAsync(args);
-
+    case 'lm_create_website_group': {
+      const validated = await createWebsiteGroupSchema.validateAsync(args);
+      
+      // Check if this is a batch request
       const isBatch = isBatchInput(validated, 'groups');
       const groups = normalizeToArray(validated, 'groups');
       const batchOptions = extractBatchOptions(validated);
       
+      // Process groups (single or batch)
       const result = await batchProcessor.processBatch(
         groups,
         async (group) => {
-          const created = await client.createDeviceGroup({
+          const created = await client.createWebsiteGroup({
             name: group.name,
             parentId: group.parentId,
             description: group.description,
-            appliesTo: group.appliesTo,
-            customProperties: group.properties
+            disableAlerting: group.disableAlerting,
+            stopMonitoring: group.stopMonitoring,
+            properties: group.properties
           });
           return {
             id: created.id,
             name: created.name,
-            fullPath: created.fullPath
+            fullPath: created.fullPath,
+            message: `Website group '${created.name}' created successfully`
           };
         },
         {
@@ -362,12 +369,12 @@ export async function handleDeviceGroupTool(
           retryOnRateLimit: true
         }
       );
-
+      
       // Return single result for single input, full batch result for batch input
       if (!isBatch) {
         const singleResult = result.results[0];
         if (!singleResult.success) {
-          throw new Error(singleResult.error || 'Failed to create device group');
+          throw new Error(singleResult.error || 'Failed to create website group');
         }
         return {
           success: true,
@@ -387,22 +394,25 @@ export async function handleDeviceGroupTool(
       };
     }
 
-    case 'lm_update_device_group': {
-      const validated = await updateDeviceGroupSchema.validateAsync(args);
-
+    case 'lm_update_website_group': {
+      const validated = await updateWebsiteGroupSchema.validateAsync(args);
+      
+      // Check if this is a batch request
       const isBatch = isBatchInput(validated, 'groups');
       const groups = normalizeToArray(validated, 'groups');
       const batchOptions = extractBatchOptions(validated);
       
+      // Process groups (single or batch)
       const result = await batchProcessor.processBatch(
         groups,
         async (group) => {
           const { groupId, ...updates } = group;
-          const updated = await client.updateDeviceGroup(groupId, updates);
+          const updated = await client.updateWebsiteGroup(groupId, updates);
           return {
             id: updated.id,
             name: updated.name,
-            fullPath: updated.fullPath
+            fullPath: updated.fullPath,
+            message: `Website group '${updated.name}' updated successfully`
           };
         },
         {
@@ -411,12 +421,12 @@ export async function handleDeviceGroupTool(
           retryOnRateLimit: true
         }
       );
-
+      
       // Return single result for single input, full batch result for batch input
       if (!isBatch) {
         const singleResult = result.results[0];
         if (!singleResult.success) {
-          throw new Error(singleResult.error || 'Failed to update device group');
+          throw new Error(singleResult.error || 'Failed to update website group');
         }
         return {
           success: true,
@@ -436,21 +446,24 @@ export async function handleDeviceGroupTool(
       };
     }
 
-    case 'lm_delete_device_group': {
-      const validated = await deleteDeviceGroupSchema.validateAsync(args);
-
+    case 'lm_delete_website_group': {
+      const validated = await deleteWebsiteGroupSchema.validateAsync(args);
+      
+      // Check if this is a batch request
       const isBatch = isBatchInput(validated, 'groups');
       const groups = normalizeToArray(validated, 'groups');
       const batchOptions = extractBatchOptions(validated);
       
+      // Process groups (single or batch)
       const result = await batchProcessor.processBatch(
         groups,
         async (group) => {
-          await client.deleteDeviceGroup(group.groupId, {
+          await client.deleteWebsiteGroup(group.groupId, {
             deleteChildren: group.deleteChildren
           });
           return {
-            groupId: group.groupId
+            groupId: group.groupId,
+            message: `Website group ${group.groupId} deleted successfully`
           };
         },
         {
@@ -459,12 +472,12 @@ export async function handleDeviceGroupTool(
           retryOnRateLimit: true
         }
       );
-
+      
       // Return single result for single input, full batch result for batch input
       if (!isBatch) {
         const singleResult = result.results[0];
         if (!singleResult.success) {
-          throw new Error(singleResult.error || 'Failed to delete device group');
+          throw new Error(singleResult.error || 'Failed to delete website group');
         }
         return {
           success: true,
@@ -485,6 +498,6 @@ export async function handleDeviceGroupTool(
     }
 
     default:
-      throw new Error(`Unknown device group tool: ${toolName}`);
+      throw new Error(`Unknown website group tool: ${toolName}`);
   }
 }

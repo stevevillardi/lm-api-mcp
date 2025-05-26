@@ -23,6 +23,13 @@ yarn-error.log*
 *.swo
 *~
 
+# Cursor/Claude
+.cursor/
+.claude/
+.cursorrules
+
+.npmignore
+
 # OS
 .DS_Store
 Thumbs.db

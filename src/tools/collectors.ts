@@ -5,13 +5,13 @@ import { listCollectorsSchema } from '../utils/validation.js';
 export const collectorTools: Tool[] = [
   {
     name: 'lm_list_collectors',
-    description: 'List LogicMonitor collectors with optional filtering and pagination',
+    description: 'List LogicMonitor collectors with optional filtering. Automatically paginates through all results if total exceeds requested size.',
     inputSchema: {
       type: 'object',
       properties: {
         filter: {
           type: 'string',
-          description: 'LogicMonitor query syntax. Examples: "status:alive", "hostname:*prod*", "platform:linux". Wildcards and special characters will be automatically quoted.'
+          description: 'LogicMonitor query syntax. Examples: "isDown:false", "hostname:*prod*", "platform:linux". Wildcards and special characters will be automatically quoted. Available operators: >: (greater than or equals), <: (less than or equals), > (greater than), < (less than), !: (does not equal), : (equals), ~ (includes), !~ (does not include).'
         },
         size: {
           type: 'number',
@@ -26,7 +26,7 @@ export const collectorTools: Tool[] = [
         },
         fields: {
           type: 'string',
-          description: 'Comma-separated list of fields to return'
+          description: 'Comma-separated list of fields to return (e.g., "id,description,platform"). Omit or use "*" for all fields.'
         }
       }
     }
@@ -52,6 +52,15 @@ export async function handleCollectorTool(
         };
       }
       
+      // If fields were specified (and not "*"), return the raw data as LogicMonitor filtered it
+      if (validated.fields && validated.fields !== '*') {
+        return {
+          total: result.total || 0,
+          collectors: result.items || []
+        };
+      }
+      
+      // Otherwise, return our curated default field set
       return {
         total: result.total || 0,
         collectors: (result.items || []).map(collector => ({
@@ -60,7 +69,10 @@ export async function handleCollectorTool(
           hostname: collector.hostname,
           status: collector.status,
           platform: collector.platform,
-          version: collector.version,
+          uptime: collector.uptime,
+          numberOfInstances: collector.numberOfInstances,
+          numberOfSDTs: collector.numberOfSDTs,
+          isDown: collector.isDown,
           collectorGroupName: collector.collectorGroupName,
           numberOfHosts: collector.numberOfHosts,
           inSDT: collector.inSDT

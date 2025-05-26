@@ -1,23 +1,24 @@
 # LogicMonitor MCP Server
 
-A Model Context Protocol (MCP) server that provides secure access to LogicMonitor API functionality for device and device group management.
+A Model Context Protocol (MCP) server that provides secure access to the LogicMonitor API, enabling AI assistants to manage monitoring infrastructure through natural language commands.
 
 ## Features
 
-- Device management (list, get, create, update, delete)
-- Device group management (list, get, create, update, delete)
-- Bearer token authentication
-- HTTP and Server-Sent Events (SSE) transport support
-- Input validation and error handling
-- Production-ready with PM2 support
-
-## Prerequisites
-
-- Node.js 18+ 
-- LogicMonitor account with API access
-- Bearer token from LogicMonitor portal
+- **Comprehensive Resource Management**: Devices, device groups, websites, website groups, collectors, and alerts
+- **Batch Operations**: Process multiple items efficiently with rate limiting and error handling
+- **Secure Authentication**: Credentials passed per-request, never stored
+- **Flexible Deployment**: Supports both stdio (local) and HTTP (remote) transports
+- **Natural Language Interface**: Designed for AI assistants like Claude
 
 ## Installation
+
+### Option 1: Install from npm (Recommended)
+
+```bash
+npm install -g logicmonitor-mcp
+```
+
+### Option 2: Install from Source
 
 ```bash
 # Clone the repository
@@ -27,245 +28,368 @@ cd lm-api-mcp
 # Install dependencies
 npm install
 
-# Build TypeScript
+# Build the project
 npm run build
+
+# Optional: Link globally
+npm link
 ```
 
 ## Configuration
 
-1. Copy `.env.example` to `.env` for development:
-```bash
-cp .env.example .env
-# Edit .env to add your test credentials (optional, for testing only)
-```
+### Prerequisites
 
-2. Configure your MCP client with LogicMonitor credentials via headers:
+You'll need:
+1. A LogicMonitor account
+2. A Bearer API token (Settings → Users → API Tokens)
+
+### STDIO Mode (Recommended for Local Use)
+
+STDIO mode is best for local AI assistants like Claude Desktop. Add to your MCP settings:
+
 ```json
 {
   "mcpServers": {
     "logicmonitor": {
-      "url": "http://localhost:3001/mcp",
-      "transport": "http",
-      "headers": {
-        "X-LM-Account": "your_account_name",
-        "X-LM-Bearer-Token": "your_bearer_token"
+      "command": "logicmonitor-mcp",
+      "env": {
+        "LM_ACCOUNT": "your-account-name",
+        "LM_BEARER_TOKEN": "your-bearer-token"
       }
     }
   }
 }
 ```
 
-## Running the Server
+If installed from source, use the full path:
 
-### Development Mode
-```bash
-npm run dev
-```
-
-### Production Mode
-```bash
-# Build first
-npm run build
-
-# Using Node.js
-npm start
-
-# Using PM2
-pm2 start ecosystem.config.js --env production
-```
-
-### Stdio Mode (for local testing)
-```bash
-npm run build
-node dist/index.js --stdio
-```
-
-## Available Tools
-
-### Device Management
-
-- `lm_list_devices` - List devices with filtering and pagination
-- `lm_get_device` - Get specific device details
-- `lm_create_device` - Add new device to monitoring
-- `lm_update_device` - Update device configuration
-- `lm_delete_device` - Remove device from monitoring
-
-### Device Group Management
-
-- `lm_list_device_groups` - List device groups
-- `lm_get_device_group` - Get specific group details
-- `lm_create_device_group` - Create new device group
-- `lm_update_device_group` - Update group configuration
-- `lm_delete_device_group` - Delete device group
-
-## Testing
-
-### Quick Test
-```bash
-# Set up test credentials
-cp .env.example .env
-# Edit .env and update TEST_LM_ACCOUNT and TEST_LM_BEARER_TOKEN
-
-# Start the server
-npm run dev
-
-# In another terminal, run tests
-npm run test:client
-```
-
-### Test Scripts Available
-- `npm run test:client` - Full test suite with all tools
-- `npm run test:headers` - Test with HTTP header authentication
-- `npm run test:session` - Test session management
-
-## Integration with AI Assistants
-
-### Claude Desktop (HTTP Mode)
-
-1. Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "logicmonitor": {
-      "url": "http://localhost:3001/mcp",
-      "transport": "http",
-      "headers": {
-        "X-LM-Account": "your_account_name",
-        "X-LM-Bearer-Token": "your_bearer_token"
-      }
-    }
-  }
-}
-```
-
-2. Start the HTTP server: `npm run dev`
-3. Restart Claude Desktop
-
-### Cursor (Stdio Mode)
-
-1. Build the project: `npm run build`
-
-2. Add to Cursor's MCP configuration:
 ```json
 {
   "mcpServers": {
     "logicmonitor": {
       "command": "node",
-      "args": ["dist/index.js", "--stdio"],
-      "cwd": "/path/to/your/lm-api-mcp",
+      "args": ["/path/to/lm-api-mcp/dist/index.js", "--stdio"],
       "env": {
-        "LM_ACCOUNT": "your_account_name",
-        "LM_BEARER_TOKEN": "your_bearer_token"
+        "LM_ACCOUNT": "your-account-name",
+        "LM_BEARER_TOKEN": "your-bearer-token"
       }
     }
   }
 }
 ```
 
-3. Restart Cursor
+### HTTP Mode (For Remote Access)
 
-### Example Prompts for Both
-- "List all devices in LogicMonitor"
-- "Show me the device groups"
-- "Create a new device group called 'Test Group' under root"
-- "Get details for device with ID 123"
+HTTP mode allows remote access and is suitable for shared deployments:
 
-## Example Tool Usage
+1. **Start the server:**
+```bash
+# With environment variables
+LM_ACCOUNT=your-account PORT=3000 logicmonitor-mcp
 
-### List Devices
+# Or use a .env file
+echo "PORT=3000" > .env
+logicmonitor-mcp
+```
+
+2. **Configure your MCP client:**
+
+Option A - Pass credentials via headers (more secure):
 ```json
 {
-  "tool": "lm_list_devices",
-  "arguments": {
-    "filter": "displayName:prod*",
-    "size": 50,
-    "offset": 0
+  "mcpServers": {
+    "logicmonitor": {
+      "url": "http://localhost:3000/mcp",
+      "transport": "http",
+      "headers": {
+        "X-LM-Account": "your-account-name",
+        "X-LM-Bearer-Token": "your-bearer-token"
+      }
+    }
   }
 }
 ```
 
-### Create Device
+Option B - Server-side credentials (for trusted environments):
+```bash
+# Start server with credentials
+LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-token logicmonitor-mcp
+```
+
+Then connect without credentials in headers:
 ```json
 {
-  "tool": "lm_create_device",
-  "arguments": {
-    "displayName": "Production Server 1",
-    "hostName": "192.168.1.100",
-    "hostGroupIds": [1, 5],
-    "properties": [
-      {"name": "location", "value": "datacenter-1"}
-    ]
+  "mcpServers": {
+    "logicmonitor": {
+      "url": "http://localhost:3000/mcp",
+      "transport": "http"
+    }
   }
 }
 ```
 
-## Deployment on AWS EC2
+## Available Tools
 
-1. Launch EC2 instance (t3.medium recommended)
-2. Install Node.js and PM2:
-```bash
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo npm install -g pm2
+### Device Management
+- `lm_list_devices` - List devices with filtering
+- `lm_get_device` - Get device details
+- `lm_create_device` - Add device(s) to monitoring
+- `lm_update_device` - Update device(s) configuration
+- `lm_delete_device` - Remove device(s) from monitoring
+
+### Device Group Management
+- `lm_list_device_groups` - List device groups
+- `lm_get_device_group` - Get group details
+- `lm_create_device_group` - Create device group(s)
+- `lm_update_device_group` - Update group(s)
+- `lm_delete_device_group` - Delete group(s)
+
+### Website Monitoring
+- `lm_list_websites` - List monitored websites
+- `lm_get_website` - Get website details
+- `lm_create_website` - Add website(s) to monitoring
+- `lm_update_website` - Update website(s)
+- `lm_delete_website` - Remove website(s)
+
+### Website Group Management
+- `lm_list_website_groups` - List website groups
+- `lm_get_website_group` - Get group details
+- `lm_create_website_group` - Create website group(s)
+- `lm_update_website_group` - Update group(s)
+- `lm_delete_website_group` - Delete group(s)
+
+### Alert Management
+- `lm_list_alerts` - List alerts with filtering
+- `lm_get_alert` - Get alert details
+- `lm_ack_alert` - Acknowledge an alert
+- `lm_add_alert_note` - Add note to alert
+- `lm_escalate_alert` - Escalate alert
+
+### Collector Management
+- `lm_list_collectors` - List collectors
+
+## Usage Examples
+
+Once configured, you can use natural language with your AI assistant:
+
+### Simple Operations
+```
+"Add server web-01.example.com (192.168.1.10) to monitoring in group 5 using collector 1"
+
+"List all devices in the Production group"
+
+"Disable alerting on device ID 1234"
 ```
 
-3. Clone and set up the application:
-```bash
-git clone https://github.com/yourusername/lm-api-mcp.git
-cd lm-api-mcp
-npm install
-npm run build
+### Batch Operations
+```
+"Add these servers to monitoring:
+- web-01 (10.0.1.1) in group 5
+- web-02 (10.0.1.2) in group 5
+- db-01 (10.0.2.1) in group 10
+All should use collector 1"
+
+"Update all devices matching 'test-*' to disable alerting"
 ```
 
-4. Start with PM2:
+### Complex Workflows
+```
+"Create a device group structure:
+- Production
+  - Web Servers
+  - Database Servers
+- Staging
+  - Web Servers
+  - Database Servers"
+
+"Set up monitoring for www.example.com with 5-minute intervals and create a multi-step check for the login flow"
+```
+
+See [examples/prompt-examples.md](examples/prompt-examples.md) for more comprehensive examples.
+
+## Production Deployment
+
+### Using PM2
+
 ```bash
-pm2 start ecosystem.config.js --env production
+# Install PM2
+npm install -g pm2
+
+# Start the server
+pm2 start ecosystem.config.js
+
+# Save PM2 configuration
 pm2 save
 pm2 startup
 ```
 
-5. Configure security group to allow HTTPS (443) traffic
+Example `ecosystem.config.js`:
+```javascript
+module.exports = {
+  apps: [{
+    name: 'lm-mcp',
+    script: 'logicmonitor-mcp',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    }
+  }]
+};
+```
 
-6. Set up reverse proxy with nginx or use ALB for SSL termination
+### Using Docker
 
-## Security Considerations
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+```
 
-- Never store credentials in the server
-- Always use HTTPS in production
-- Implement rate limiting at load balancer level
-- Monitor API usage and set alerts
-- Regularly rotate bearer tokens
+```bash
+# Build and run
+docker build -t logicmonitor-mcp .
+docker run -p 3000:3000 -e LM_ACCOUNT=your-account logicmonitor-mcp
+```
+
+### Security Considerations
+
+1. **Use HTTPS in production** - Deploy behind a reverse proxy with SSL
+2. **Restrict access** - Use firewall rules or API gateway
+3. **Rotate tokens regularly** - Update bearer tokens periodically
+4. **Monitor access logs** - Track usage and detect anomalies
+5. **Use environment variables** - Never commit credentials
+
+## Development
+
+### Running from Source
+
+```bash
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Run tests
+npm test
+
+# Build
+npm run build
+
+# Lint
+npm run lint
+```
+
+### Testing Tools
+
+```bash
+# Test HTTP connection
+npm run test:client
+
+# Test with credentials
+npm run test:headers
+
+# Test specific operations
+npm run test:devices
+npm run test:websites
+```
 
 ## Troubleshooting
 
-### Check server logs
-```bash
-# If using PM2
-pm2 logs lm-mcp-server
-
-# If running directly
-# Check console output
-```
-
-### Test connectivity
-```bash
-curl http://localhost:3000/health
-```
-
 ### Common Issues
 
-1. **Authentication errors**: Verify bearer token is valid and not expired
-2. **Connection timeouts**: Check network connectivity to LogicMonitor API
-3. **Rate limiting**: Implement backoff strategy in your client
+**"LogicMonitor credentials not provided"**
+- Ensure `LM_ACCOUNT` and `LM_BEARER_TOKEN` are set correctly
+- For HTTP mode, check headers are being sent
+
+**"Rate limit exceeded"**
+- The server automatically retries with backoff
+- Reduce `maxConcurrent` in batch operations
+
+**"Connection refused"**
+- Check the server is running on the correct port
+- Verify firewall rules allow the connection
+
+**"Invalid token"**
+- Verify your bearer token is active in LogicMonitor
+- Check the account name matches your LogicMonitor URL
+
+### Debug Mode
+
+Enable debug logging:
+```bash
+LOG_LEVEL=debug logicmonitor-mcp
+```
+
+## Architecture
+
+- **Transport Layer**: Supports both STDIO and HTTP/SSE
+- **Session Management**: Stateful connections with cleanup
+- **Rate Limiting**: Automatic retry with exponential backoff
+- **Batch Processing**: Concurrent operations with partial failure handling
+- **Input Validation**: Joi schemas ensure data integrity
 
 ## Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
 ## License
 
 MIT
+
+## Support
+
+- Issues: [GitHub Issues](https://github.com/yourusername/lm-api-mcp/issues)
+- Documentation: [Full Documentation](https://github.com/yourusername/lm-api-mcp/wiki)
+- Examples: [examples/](examples/)
+
+## Packaging for Distribution
+
+### NPM Package Setup
+
+Create a `bin` field in package.json:
+```json
+{
+  "name": "logicmonitor-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for LogicMonitor API",
+  "main": "dist/index.js",
+  "bin": {
+    "logicmonitor-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "prepublishOnly": "npm run build"
+  }
+}
+```
+
+Add shebang to `src/index.ts`:
+```typescript
+#!/usr/bin/env node
+```
+
+### Publishing
+
+```bash
+# Login to npm
+npm login
+
+# Publish
+npm publish
+```
+
+### Alternative Distribution Methods
+
+1. **GitHub Releases**: Create releases with pre-built binaries
+2. **Docker Hub**: Publish container images
+3. **Homebrew**: Create a formula for macOS users
+4. **Snap/Flatpak**: For Linux distribution

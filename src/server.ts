@@ -11,6 +11,9 @@ import { LogicMonitorClient } from './api/client.js';
 import { deviceTools, handleDeviceTool } from './tools/devices.js';
 import { deviceGroupTools, handleDeviceGroupTool } from './tools/deviceGroups.js';
 import { collectorTools, handleCollectorTool } from './tools/collectors.js';
+import { alertTools, listAlerts, getAlert, ackAlert, addAlertNote, escalateAlert } from './tools/alerts.js';
+import { websiteTools, handleWebsiteTool } from './tools/websites.js';
+import { websiteGroupTools, handleWebsiteGroupTool } from './tools/websiteGroups.js';
 
 export interface ServerConfig {
   name?: string;
@@ -53,7 +56,7 @@ export async function createServer(config: ServerConfig = {}) {
   (server as any).credentials = config.credentials || {};
 
   // Register all tools
-  const allTools = [...deviceTools, ...deviceGroupTools, ...collectorTools];
+  const allTools = [...deviceTools, ...deviceGroupTools, ...collectorTools, ...alertTools, ...websiteTools, ...websiteGroupTools];
   
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: allTools
@@ -84,8 +87,14 @@ export async function createServer(config: ServerConfig = {}) {
       
       if (name.startsWith('lm_') && name.includes('device_group')) {
         result = await handleDeviceGroupTool(name, args, client);
+      } else if (name.startsWith('lm_') && name.includes('website_group')) {
+        result = await handleWebsiteGroupTool(name, args, client);
       } else if (name.startsWith('lm_') && name.includes('collector')) {
         result = await handleCollectorTool(name, args, client);
+      } else if (name.startsWith('lm_') && name.includes('alert')) {
+        result = await handleAlertTool(name, args, client);
+      } else if (name.startsWith('lm_') && name.includes('website')) {
+        result = await handleWebsiteTool(name, args, client);
       } else if (name.startsWith('lm_') && name.includes('device')) {
         result = await handleDeviceTool(name, args, client);
       } else {
@@ -121,6 +130,27 @@ export async function createServer(config: ServerConfig = {}) {
       );
     }
   });
+
+  // Alert tool handler function
+  async function handleAlertTool(name: string, args: any, client: LogicMonitorClient): Promise<any> {
+    switch (name) {
+      case 'lm_list_alerts':
+        return listAlerts(client, args);
+      case 'lm_get_alert':
+        return getAlert(client, args);
+      case 'lm_ack_alert':
+        return ackAlert(client, args);
+      case 'lm_add_alert_note':
+        return addAlertNote(client, args);
+      case 'lm_escalate_alert':
+        return escalateAlert(client, args);
+      default:
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown alert tool: ${name}`
+        );
+    }
+  }
 
   return server;
 }

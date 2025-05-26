@@ -1,7 +1,7 @@
 # LogicMonitor MCP Server Design Document
 
 ## Overview
-A remote Model Context Protocol (MCP) server that acts as a stateless bridge between MCP clients and the LogicMonitor API, focusing on device and device group management.
+A remote Model Context Protocol (MCP) server that acts as a stateless bridge between MCP clients and the LogicMonitor API, providing comprehensive management of devices, device groups, websites, website groups, collectors, and alerts.
 
 ## Architecture
 
@@ -55,6 +55,8 @@ The transport will automatically use SSE for streaming when appropriate.
 - **Validation**: Joi for input validation
 - **Security**: Helmet for security headers
 - **Process Manager**: PM2 for production
+- **Rate Limiting**: Built-in rate limiter with exponential backoff
+- **Batch Processing**: Concurrent request handler with partial failure support
 
 ## Core Functionality
 
@@ -80,23 +82,32 @@ interface DeviceTools {
   },
 
   "lm_create_device": {
-    description: "Add a new device to monitoring",
+    description: "Add one or more devices to monitoring",
     inputSchema: {
+      // Single device mode
       displayName: string;    // Required
-      hostName: string;       // Required (IP or FQDN)
+      name: string;           // Required (hostname or IP)
       hostGroupIds: number[]; // Required (at least one group)
-      preferredCollectorId?: number;
+      preferredCollectorId: number; // Required
       disableAlerting?: boolean;
       properties?: Array<{
         name: string;
         value: string;
       }>;
+      
+      // OR Batch mode
+      devices: Array<Device>; // Array of device objects
+      batchOptions?: {
+        maxConcurrent?: number;    // 1-50, default: 5
+        continueOnError?: boolean; // default: true
+      };
     }
   },
 
   "lm_update_device": {
-    description: "Update existing device",
+    description: "Update one or more existing devices",
     inputSchema: {
+      // Single device mode
       deviceId: number;       // Required
       displayName?: string;
       hostGroupIds?: number[];
@@ -105,13 +116,28 @@ interface DeviceTools {
         name: string;
         value: string;
       }>;
+      
+      // OR Batch mode
+      devices: Array<UpdateDevice>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
     }
   },
 
   "lm_delete_device": {
-    description: "Remove device from monitoring",
+    description: "Remove one or more devices from monitoring",
     inputSchema: {
+      // Single device mode
       deviceId: number;       // Required
+      
+      // OR Batch mode
+      devices: Array<{ deviceId: number }>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
     }
   }
 }
@@ -137,8 +163,9 @@ interface DeviceGroupTools {
   },
 
   "lm_create_device_group": {
-    description: "Create new device group",
+    description: "Create new device group(s)",
     inputSchema: {
+      // Single group mode
       name: string;           // Required
       parentId: number;       // Required (1 = root)
       description?: string;
@@ -147,12 +174,20 @@ interface DeviceGroupTools {
         name: string;
         value: string;
       }>;
+      
+      // OR Batch mode
+      groups: Array<DeviceGroup>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
     }
   },
 
   "lm_update_device_group": {
-    description: "Update device group",
+    description: "Update device group(s)",
     inputSchema: {
+      // Single group mode
       groupId: number;        // Required
       name?: string;
       description?: string;
@@ -161,14 +196,277 @@ interface DeviceGroupTools {
         name: string;
         value: string;
       }>;
+      
+      // OR Batch mode
+      groups: Array<UpdateDeviceGroup>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
     }
   },
 
   "lm_delete_device_group": {
-    description: "Delete device group",
+    description: "Delete device group(s)",
     inputSchema: {
+      // Single group mode
       groupId: number;        // Required
       deleteChildren?: boolean;
+      
+      // OR Batch mode
+      groups: Array<{ groupId: number, deleteChildren?: boolean }>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  }
+}
+```
+
+### Website Management Tools
+
+```typescript
+interface WebsiteTools {
+  "lm_list_websites": {
+    description: "List websites with optional filtering",
+    inputSchema: {
+      filter?: string;
+      size?: number;
+      offset?: number;
+      fields?: string;
+    }
+  },
+
+  "lm_get_website": {
+    description: "Get specific website details",
+    inputSchema: {
+      websiteId: number;      // Required
+    }
+  },
+
+  "lm_create_website": {
+    description: "Create one or more websites",
+    inputSchema: {
+      // Single website mode
+      name: string;           // Required
+      domain: string;         // Required
+      type: "webcheck" | "pingcheck"; // Required
+      groupId: number;        // Required
+      description?: string;
+      disableAlerting?: boolean;
+      stopMonitoring?: boolean;
+      useDefaultAlertSetting?: boolean;
+      useDefaultLocationSetting?: boolean;
+      pollingInterval?: number;
+      properties?: Array<{
+        name: string;
+        value: string;
+      }>;
+      steps?: Array<{
+        url: string;
+        HTTPMethod?: string;
+        statusCode?: string;
+        description?: string;
+      }>;
+      
+      // OR Batch mode
+      websites: Array<Website>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  },
+
+  "lm_update_website": {
+    description: "Update one or more websites",
+    inputSchema: {
+      // Single website mode
+      websiteId: number;      // Required
+      name?: string;
+      description?: string;
+      disableAlerting?: boolean;
+      stopMonitoring?: boolean;
+      useDefaultAlertSetting?: boolean;
+      useDefaultLocationSetting?: boolean;
+      pollingInterval?: number;
+      properties?: Array<{
+        name: string;
+        value: string;
+      }>;
+      
+      // OR Batch mode
+      websites: Array<UpdateWebsite>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  },
+
+  "lm_delete_website": {
+    description: "Delete one or more websites",
+    inputSchema: {
+      // Single website mode
+      websiteId: number;      // Required
+      
+      // OR Batch mode
+      websites: Array<{ websiteId: number }>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  }
+}
+```
+
+### Website Group Management Tools
+
+```typescript
+interface WebsiteGroupTools {
+  "lm_list_website_groups": {
+    description: "List website groups",
+    inputSchema: {
+      filter?: string;
+      size?: number;
+      offset?: number;
+      fields?: string;
+    }
+  },
+
+  "lm_get_website_group": {
+    description: "Get website group details",
+    inputSchema: {
+      groupId: number;        // Required
+    }
+  },
+
+  "lm_create_website_group": {
+    description: "Create website group(s)",
+    inputSchema: {
+      // Single group mode
+      name: string;           // Required
+      parentId: number;       // Required (1 = root)
+      description?: string;
+      disableAlerting?: boolean;
+      stopMonitoring?: boolean;
+      properties?: Array<{
+        name: string;
+        value: string;
+      }>;
+      
+      // OR Batch mode
+      groups: Array<WebsiteGroup>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  },
+
+  "lm_update_website_group": {
+    description: "Update website group(s)",
+    inputSchema: {
+      // Single group mode
+      groupId: number;        // Required
+      name?: string;
+      description?: string;
+      disableAlerting?: boolean;
+      stopMonitoring?: boolean;
+      properties?: Array<{
+        name: string;
+        value: string;
+      }>;
+      
+      // OR Batch mode
+      groups: Array<UpdateWebsiteGroup>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  },
+
+  "lm_delete_website_group": {
+    description: "Delete website group(s)",
+    inputSchema: {
+      // Single group mode
+      groupId: number;        // Required
+      deleteChildren?: boolean;
+      
+      // OR Batch mode
+      groups: Array<{ groupId: number, deleteChildren?: boolean }>;
+      batchOptions?: {
+        maxConcurrent?: number;
+        continueOnError?: boolean;
+      };
+    }
+  }
+}
+```
+
+### Alert Management Tools
+
+```typescript
+interface AlertTools {
+  "lm_list_alerts": {
+    description: "List alerts with optional filtering",
+    inputSchema: {
+      filter?: string;        // LM query syntax
+      fields?: string;
+      size?: number;
+      offset?: number;
+      sort?: string;
+      needMessage?: boolean;
+      customColumns?: string;
+    }
+  },
+
+  "lm_get_alert": {
+    description: "Get specific alert details",
+    inputSchema: {
+      alertId: string;        // Required
+    }
+  },
+
+  "lm_ack_alert": {
+    description: "Acknowledge an alert",
+    inputSchema: {
+      alertId: string;        // Required
+      ackComment: string;     // Required
+    }
+  },
+
+  "lm_add_alert_note": {
+    description: "Add a note to an alert",
+    inputSchema: {
+      alertId: string;        // Required
+      ackComment: string;     // Required
+    }
+  },
+
+  "lm_escalate_alert": {
+    description: "Escalate an alert to the next level",
+    inputSchema: {
+      alertId: string;        // Required
+    }
+  }
+}
+```
+
+### Collector Management Tools
+
+```typescript
+interface CollectorTools {
+  "lm_list_collectors": {
+    description: "List collectors with optional filtering",
+    inputSchema: {
+      filter?: string;
+      size?: number;
+      offset?: number;
+      fields?: string;
     }
   }
 }
@@ -184,14 +482,24 @@ lm-api-mcp/
 │   ├── server.ts             # MCP server setup
 │   ├── tools/
 │   │   ├── devices.ts        # Device management handlers
-│   │   └── deviceGroups.ts   # Device group handlers
+│   │   ├── deviceGroups.ts   # Device group handlers
+│   │   ├── websites.ts       # Website management handlers
+│   │   ├── websiteGroups.ts  # Website group handlers
+│   │   ├── alerts.ts         # Alert management handlers
+│   │   └── collectors.ts     # Collector handlers
 │   ├── api/
 │   │   └── client.ts         # LogicMonitor API client
 │   ├── utils/
-│   │   └── validation.ts     # Input validation schemas
+│   │   ├── validation.ts     # Input validation schemas
+│   │   ├── filters.ts        # LogicMonitor filter formatting
+│   │   ├── rateLimiter.ts    # Rate limit detection and retry
+│   │   ├── batchProcessor.ts # Batch operation handler
+│   │   └── schemaHelpers.ts  # Schema generation utilities
 │   └── types/
 │       └── logicmonitor.ts   # TypeScript interfaces
 ├── tests/
+├── examples/
+│   └── batch-operations.md   # Batch usage examples
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -250,7 +558,14 @@ export async function createServer(config: ServerConfig = {}) {
 
   // Register all tools
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: [...deviceTools, ...deviceGroupTools]
+    tools: [
+      ...deviceTools, 
+      ...deviceGroupTools, 
+      ...websiteTools, 
+      ...websiteGroupTools, 
+      ...alertTools, 
+      ...collectorTools
+    ]
   }));
 
   // Handle tool calls
@@ -374,16 +689,79 @@ module.exports = {
 };
 ```
 
+## Batch Operations
+
+### Overview
+The server supports efficient batch processing for all CRUD operations with:
+- **Backward Compatibility**: Single operations work unchanged
+- **Rate Limit Handling**: Automatic retry with exponential backoff
+- **Partial Failure Support**: Continue processing on errors
+- **Configurable Concurrency**: Control parallel request limits
+
+### Batch Request Format
+```typescript
+// Single operation (backward compatible)
+await client.callTool('lm_create_device', {
+  displayName: 'Server 1',
+  hostName: 'server1.example.com',
+  hostGroupIds: [1],
+  preferredCollectorId: 1
+});
+
+// Batch operation
+await client.callTool('lm_create_device', {
+  devices: [
+    { displayName: 'Server 1', ... },
+    { displayName: 'Server 2', ... },
+    { displayName: 'Server 3', ... }
+  ],
+  batchOptions: {
+    maxConcurrent: 5,
+    continueOnError: true
+  }
+});
+```
+
+### Batch Response Format
+```typescript
+// For devices
+{
+  success: boolean,           // false if any failed
+  summary: {
+    total: number,
+    succeeded: number,
+    failed: number
+  },
+  devices: Array<{
+    index: number,
+    success: boolean,
+    device?: DeviceResult,    // if success
+    error?: string           // if failed
+  }>
+}
+
+// For device groups, websites, website groups
+// Same structure but with appropriate resource name
+// (groups, websites, etc.)
+```
+
+### Rate Limiting
+The server automatically handles LogicMonitor's rate limits:
+- Detects `X-Rate-Limit-*` headers
+- Implements exponential backoff with jitter
+- Retries failed requests up to 3 times
+- Preemptively slows down when approaching limits
+
 ## Future Expansion Points
 
 When moving beyond POC, these areas can be enhanced without major refactoring:
 
-1. **Additional Tools**: Alert management, dashboards, collectors
-2. **Batch Operations**: Process multiple devices/groups efficiently  
-3. **Streaming Responses**: For large data sets
-4. **Webhook Support**: Real-time alert notifications
-5. **Caching Layer**: Add Redis when performance requires it
-6. **Multi-Region**: Deploy to multiple AWS regions
+1. **Additional Tools**: Alert management, dashboards, reports
+2. **Streaming Responses**: For large data sets
+3. **Webhook Support**: Real-time alert notifications
+4. **Caching Layer**: Add Redis when performance requires it
+5. **Multi-Region**: Deploy to multiple AWS regions
+6. **Advanced Batch Features**: Progress callbacks, custom retry policies
 
 ## Implementation Status
 
@@ -391,14 +769,21 @@ When moving beyond POC, these areas can be enhanced without major refactoring:
 1. **Project Structure**: TypeScript with proper module organization
 2. **Authentication**: HTTP header-based auth (X-LM-Account, X-LM-Bearer-Token)
 3. **LogicMonitor API Client**: Full implementation with bearer token support
-4. **Device Management**: All CRUD operations working
-5. **Device Group Management**: All CRUD operations working
-6. **MCP Protocol**: Full compliance with StreamableHTTPServerTransport
-7. **Session Management**: Stateful connections with proper cleanup
-8. **Input Validation**: Joi schemas for all tool inputs
-9. **Error Handling**: Comprehensive error handling with proper logging
-10. **Testing Suite**: Multiple test scripts for different scenarios
-11. **Documentation**: Complete setup and usage guides
+4. **Device Management**: All CRUD operations with batch support
+5. **Device Group Management**: All CRUD operations with batch support
+6. **Website Management**: All CRUD operations with batch support
+7. **Website Group Management**: All CRUD operations with batch support
+8. **Alert Management**: List, get, acknowledge, note, and escalate operations
+9. **Collector Management**: List operation
+10. **MCP Protocol**: Full compliance with StreamableHTTPServerTransport
+11. **Session Management**: Stateful connections with proper cleanup
+12. **Input Validation**: Joi schemas for all tool inputs
+13. **Error Handling**: Comprehensive error handling with proper logging
+14. **Testing Suite**: Multiple test scripts for different scenarios
+15. **Documentation**: Complete setup and usage guides
+16. **Batch Operations**: Full support for bulk create/update/delete with rate limiting
+17. **Rate Limit Handling**: Automatic detection and retry with exponential backoff
+18. **Standardized Code Pattern**: All handlers follow consistent implementation pattern
 
 ### Key Implementation Details
 
@@ -410,7 +795,9 @@ When moving beyond POC, these areas can be enhanced without major refactoring:
 #### API Response Handling
 - List endpoints return `{total, items}` directly
 - Single item endpoints return data wrapped in `{data: item}`
-- hostGroupIds handled as comma-separated strings
+- hostGroupIds handled as arrays of numbers
+- All batch operations use consistent handler pattern with batchProcessor
+- Properties field naming: CREATE operations use `properties`, UPDATE operations use `customProperties` for devices/deviceGroups
 
 #### Transport Configuration
 - Single `/mcp` endpoint handles all requests
@@ -429,9 +816,13 @@ When moving beyond POC, these areas can be enhanced without major refactoring:
 - [ ] Automated deployment
 
 ### Future Enhancements
-1. **Additional Tools**: Alerts, collectors, dashboards, reports
-2. **Batch Operations**: Multiple device/group operations
+1. **Additional Tools**: Dashboards, reports, SDT (scheduled downtime)
+2. **Extended Alert Operations**: Batch acknowledge, clear alerts
 3. **Webhook Support**: Real-time alert notifications
 4. **Caching**: Redis for frequently accessed data
 5. **OAuth Support**: Alternative to bearer tokens
 6. **Audit Trail**: Detailed operation logging
+7. **Batch Import/Export**: CSV/JSON bulk operations
+8. **Scheduled Operations**: Deferred batch processing
+9. **Collector Management**: Create, update, delete operations
+10. **Advanced Filtering**: Support for complex query builders

@@ -52,6 +52,7 @@ STDIO mode is best for local AI assistants like Claude Desktop. Add to your MCP 
   "mcpServers": {
     "logicmonitor": {
       "command": "logicmonitor-mcp",
+      "args": ["--stdio"],
       "env": {
         "LM_ACCOUNT": "your-account-name",
         "LM_BEARER_TOKEN": "your-bearer-token"

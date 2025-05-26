@@ -22,7 +22,7 @@ npm install -g logicmonitor-mcp
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lm-api-mcp.git
+git clone https://github.com/stevevillardi/lm-api-mcp.git
 cd lm-api-mcp
 
 # Install dependencies
@@ -85,7 +85,7 @@ HTTP mode allows remote access and is suitable for shared deployments:
 1. **Start the server:**
 ```bash
 # With environment variables
-LM_ACCOUNT=your-account PORT=3000 logicmonitor-mcp
+LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-bearer-token PORT=3000 logicmonitor-mcp
 
 # Or use a .env file
 echo "PORT=3000" > .env
@@ -174,7 +174,7 @@ Once configured, you can use natural language with your AI assistant:
 
 ### Simple Operations
 ```
-"Add server web-01.example.com (192.168.1.10) to monitoring in group 5 using collector 1"
+"Add server web-01.example.com (192.168.1.10) to monitoring in group Production using collector 1"
 
 "List all devices in the Production group"
 
@@ -184,9 +184,9 @@ Once configured, you can use natural language with your AI assistant:
 ### Batch Operations
 ```
 "Add these servers to monitoring:
-- web-01 (10.0.1.1) in group 5
-- web-02 (10.0.1.2) in group 5
-- db-01 (10.0.2.1) in group 10
+- web-01 (10.0.1.1) in group Production
+- web-02 (10.0.1.2) in group Production
+- db-01 (10.0.2.1) in group Dev
 All should use collector 1"
 
 "Update all devices matching 'test-*' to disable alerting"
@@ -201,68 +201,9 @@ All should use collector 1"
 - Staging
   - Web Servers
   - Database Servers"
-
-"Set up monitoring for www.example.com with 5-minute intervals and create a multi-step check for the login flow"
 ```
 
 See [examples/prompt-examples.md](examples/prompt-examples.md) for more comprehensive examples.
-
-## Production Deployment
-
-### Using PM2
-
-```bash
-# Install PM2
-npm install -g pm2
-
-# Start the server
-pm2 start ecosystem.config.js
-
-# Save PM2 configuration
-pm2 save
-pm2 startup
-```
-
-Example `ecosystem.config.js`:
-```javascript
-module.exports = {
-  apps: [{
-    name: 'lm-mcp',
-    script: 'logicmonitor-mcp',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    }
-  }]
-};
-```
-
-### Using Docker
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["node", "dist/index.js"]
-```
-
-```bash
-# Build and run
-docker build -t logicmonitor-mcp .
-docker run -p 3000:3000 -e LM_ACCOUNT=your-account logicmonitor-mcp
-```
-
-### Security Considerations
-
-1. **Use HTTPS in production** - Deploy behind a reverse proxy with SSL
-2. **Restrict access** - Use firewall rules or API gateway
-3. **Rotate tokens regularly** - Update bearer tokens periodically
-4. **Monitor access logs** - Track usage and detect anomalies
-5. **Use environment variables** - Never commit credentials
 
 ## Development
 
@@ -275,49 +216,8 @@ npm install
 # Run in development mode
 npm run dev
 
-# Run tests
-npm test
-
 # Build
 npm run build
-
-# Lint
-npm run lint
-```
-
-### Testing Tools
-
-```bash
-# Test HTTP connection
-npm run test:client
-
-# Test with credentials
-npm run test:headers
-
-# Test specific operations
-npm run test:devices
-npm run test:websites
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**"LogicMonitor credentials not provided"**
-- Ensure `LM_ACCOUNT` and `LM_BEARER_TOKEN` are set correctly
-- For HTTP mode, check headers are being sent
-
-**"Rate limit exceeded"**
-- The server automatically retries with backoff
-- Reduce `maxConcurrent` in batch operations
-
-**"Connection refused"**
-- Check the server is running on the correct port
-- Verify firewall rules allow the connection
-
-**"Invalid token"**
-- Verify your bearer token is active in LogicMonitor
-- Check the account name matches your LogicMonitor URL
 
 ### Debug Mode
 
@@ -345,51 +245,3 @@ LOG_LEVEL=debug logicmonitor-mcp
 ## License
 
 MIT
-
-## Support
-
-- Issues: [GitHub Issues](https://github.com/yourusername/lm-api-mcp/issues)
-- Documentation: [Full Documentation](https://github.com/yourusername/lm-api-mcp/wiki)
-- Examples: [examples/](examples/)
-
-## Packaging for Distribution
-
-### NPM Package Setup
-
-Create a `bin` field in package.json:
-```json
-{
-  "name": "logicmonitor-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for LogicMonitor API",
-  "main": "dist/index.js",
-  "bin": {
-    "logicmonitor-mcp": "./dist/index.js"
-  },
-  "scripts": {
-    "prepublishOnly": "npm run build"
-  }
-}
-```
-
-Add shebang to `src/index.ts`:
-```typescript
-#!/usr/bin/env node
-```
-
-### Publishing
-
-```bash
-# Login to npm
-npm login
-
-# Publish
-npm publish
-```
-
-### Alternative Distribution Methods
-
-1. **GitHub Releases**: Create releases with pre-built binaries
-2. **Docker Hub**: Publish container images
-3. **Homebrew**: Create a formula for macOS users
-4. **Snap/Flatpak**: For Linux distribution

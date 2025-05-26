@@ -42,3 +42,5 @@ coverage/
 
 # PM2
 .pm2/
+CLAUDE.md
+DESIGN.md

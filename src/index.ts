@@ -48,7 +48,7 @@ async function startHttpServer() {
   
   // Health check endpoint
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'logicmonitor-mcp', version: '1.0.0' });
+    res.json({ status: 'ok', service: 'logicmonitor-api-mcp', version: '1.0.0' });
   });
 
   // Store for active transports (for stateful mode)
@@ -73,7 +73,7 @@ async function startHttpServer() {
       res.setHeader('Access-Control-Allow-Origin', '*');
       
       // Send ready message
-      res.write('data: {"type":"ready","server":"logicmonitor-mcp"}\n\n');
+      res.write('data: {"type":"ready","server":"logicmonitor-api-mcp"}\n\n');
       
       // Keep connection alive
       const heartbeat = setInterval(() => {

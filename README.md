@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) server that provides secure access to the LogicMo
 ### Option 1: Install from npm (Recommended)
 
 ```bash
-npm install -g logicmonitor-mcp
+npm install -g logicmonitor-api-mcp
 ```
 
 ### Option 2: Install from Source
@@ -51,7 +51,7 @@ STDIO mode is best for local AI assistants like Claude Desktop. Add to your MCP 
 {
   "mcpServers": {
     "logicmonitor": {
-      "command": "logicmonitor-mcp",
+      "command": "logicmonitor-api-mcp",
       "args": ["--stdio"],
       "env": {
         "LM_ACCOUNT": "your-account-name",
@@ -86,11 +86,11 @@ HTTP mode allows remote access and is suitable for shared deployments:
 1. **Start the server:**
 ```bash
 # With environment variables
-LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-bearer-token PORT=3000 logicmonitor-mcp
+LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-bearer-token PORT=3000 logicmonitor-api-mcp
 
 # Or use a .env file
 echo "PORT=3000" > .env
-logicmonitor-mcp
+logicmonitor-api-mcp
 ```
 
 2. **Configure your MCP client:**
@@ -114,7 +114,7 @@ Option A - Pass credentials via headers (more secure):
 Option B - Server-side credentials (for trusted environments):
 ```bash
 # Start server with credentials
-LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-token logicmonitor-mcp
+LM_ACCOUNT=your-account LM_BEARER_TOKEN=your-token logicmonitor-api-mcp
 ```
 
 Then connect without credentials in headers:
@@ -224,7 +224,7 @@ npm run build
 
 Enable debug logging:
 ```bash
-LOG_LEVEL=debug logicmonitor-mcp
+LOG_LEVEL=debug logicmonitor-api-mcp
 ```
 
 ## Architecture

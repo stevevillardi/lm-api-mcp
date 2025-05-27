@@ -34,7 +34,7 @@ export const deviceGroupTools: Tool[] = [
         },
         fields: {
           type: 'string',
-          description: 'Comma-separated list of fields to return (e.g., "id,name,fullPath"). Omit or use "*" for all fields.'
+          description: 'Comma-separated list of fields to return (e.g., "id,name,fullPath"). Omit for curated fields or use "*" for all fields. Unless otherwise specified, you should default to using all fields.'
         },
         parentId: {
           type: 'number',

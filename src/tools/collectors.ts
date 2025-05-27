@@ -26,7 +26,7 @@ export const collectorTools: Tool[] = [
         },
         fields: {
           type: 'string',
-          description: 'Comma-separated list of fields to return (e.g., "id,description,platform"). Omit or use "*" for all fields.'
+          description: 'Comma-separated list of fields to return (e.g., "id,description,platform"). Omit for curated fields or use "*" for all fields. Unless otherwise specified, you should default to using all fields.'
         }
       }
     }

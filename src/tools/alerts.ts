@@ -120,11 +120,11 @@ export const alertTools = [
       properties: {
         filter: {
           type: 'string',
-          description: 'LogicMonitor filter string. Note that filtering is only available for id, type, acked, rule, chain, severity, cleared, sdted, startEpoch, monitorObjectName, monitorObjectGroups, resourceTemplateName, instanceName, and dataPointName. Example: "severity>2,cleared:false". Available operators: >: (greater than or equals), <: (less than or equals), > (greater than), < (less than), !: (does not equal), : (equals), ~ (includes), !~ (does not include).'
+          description: 'LogicMonitor filter string. Note that filtering is only available for id, type, acked, rule, chain, severity, cleared, sdted, startEpoch, monitorObjectName, monitorObjectGroups, resourceTemplateName, instanceName, and dataPointName. Example: "severity>2,cleared:false". Available operators: >: (greater than or equals), <: (less than or equals), > (greater than), < (less than), !: (does not equal), : (equals), ~ (includes), !~ (does not include). All epoch fields are in seconds.'
         },
         fields: {
           type: 'string',
-          description: 'Comma-separated list of fields to return. Omit or use "*" for all fields'
+          description: 'Comma-separated list of fields to return. Use "*" for all fields or Omit to return curated fields. Unless otherwise specified, you should default to using all fields.'
         },
         size: {
           type: 'number',

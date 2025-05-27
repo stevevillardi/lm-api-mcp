@@ -44,7 +44,7 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   const server = new Server({
-    name: config.name || 'logicmonitor-mcp',
+    name: config.name || 'logicmonitor-api-mcp',
     version: config.version || '1.0.0'
   }, {
     capabilities: {
